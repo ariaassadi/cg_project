@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export RT_VIEWER_ROOT=$PWD
+
 if [ -z "$RT_VIEWER_ROOT" ]
 then
     echo "RT_VIEWER_ROOT is not set"
