@@ -1,0 +1,2 @@
+open:
+	bash build.sh
