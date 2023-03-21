@@ -79,18 +79,18 @@ namespace rt
             return glm::vec3(0.0f);
 
         HitRecord rec;
-        if (hit_world(r, 0.0f, 9999.0f, rec))
+        if (hit_world(r, 0.001f, infinity, rec))
         {
             rec.normal = glm::normalize(rec.normal); // Always normalise before use!
+            // rec.p = glm::normalize(rec.p);           // Always normalise before use!
             if (rtx.show_normals)
             {
                 return rec.normal * 0.5f + 0.5f;
             }
 
             // Implement lighting for materials here
-
-            // ...
-            return glm::vec3(0.0f);
+            glm::vec3 target = rec.p + rec.normal + glm::normalize(random_in_unit_sphere());
+            return 0.5f * color(rtx, Ray(rec.p, target - rec.p), max_bounces - 1);
         }
 
         // If no hit, return sky color
@@ -148,13 +148,13 @@ namespace rt
             float v = 0;
             if (rtx.antialiasing_jitter)
             {
-                u = (float(x) + random_double()) / float(nx);
-                v = (float(y) + random_double()) / float(ny);
+                v = (float(y) + random_double()) / float(ny - 1);
+                u = (float(x) + random_double()) / float(nx - 1);
             }
             else
             {
-                u = (float(x) + 0.5f) / float(nx);
-                v = (float(y) + 0.5f) / float(ny);
+                u = (float(x) + 0.5f) / float(nx - 1);
+                v = (float(y) + 0.5f) / float(ny - 1);
             }
 
             Ray r(origin, lower_left_corner + u * horizontal + v * vertical);
