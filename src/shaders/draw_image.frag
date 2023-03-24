@@ -11,5 +11,6 @@ void main()
 {
     frag_color = texture(u_texture, v_texcoord);
     frag_color.rgb /= frag_color.a;
+    // gamma correction
     frag_color.rgb = pow(frag_color.rgb, vec3(1.0 / 2.2));
 }
