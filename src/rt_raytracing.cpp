@@ -5,6 +5,7 @@
 #include "rt_triangle.h"
 #include "rt_box.h"
 #include "rtweekend.h"
+#include "material.h"
 
 #include "cg_utils2.h" // Used for OBJ-mesh loading
 #include <stdlib.h>    // Needed for drand48()
@@ -83,14 +84,22 @@ namespace rt
         {
             rec.normal = glm::normalize(rec.normal); // Always normalise before use!
             // rec.p = glm::normalize(rec.p);           // Always normalise before use!
-            if (rtx.show_normals)
-            {
-                return rec.normal * 0.5f + 0.5f;
-            }
+            // if (rtx.show_normals)
+            // {
+            //     return rec.normal * 0.5f + 0.5f;
+            // }
 
             // Implement lighting for materials here
-            glm::vec3 target = rec.p + rec.normal + glm::normalize(random_in_unit_sphere());
-            return 0.5f * color(rtx, Ray(rec.p, target - rec.p), max_bounces - 1);
+            Ray scattered;
+            glm::vec3 attenuation;
+            if (rec.mat_ptr->scatter(r, rec, attenuation, scattered))
+            {
+                return attenuation * color(rtx, scattered, max_bounces - 1);
+            }
+            return glm::vec3(0.0f);
+
+            // glm::vec3 target = rec.p + rec.normal + glm::normalize(random_in_unit_sphere());
+            // return 0.5f * color(rtx, Ray(rec.p, target - rec.p), max_bounces - 1);
         }
 
         // If no hit, return sky color
@@ -102,11 +111,11 @@ namespace rt
     // MODIFY THIS FUNCTION!
     void setupScene(RTContext &rtx, const char *filename)
     {
-        g_scene.ground = Sphere(glm::vec3(0.0f, -1000.5f, 0.0f), 1000.0f);
+        g_scene.ground = Sphere(glm::vec3(0.0f, -1000.5f, 0.0f), 1000.0f, new Lambertian(glm::vec3(0.1f, 0.5f, 0.1f)));
         g_scene.spheres = {
-            Sphere(glm::vec3(0.0f, 0.0f, 0.0f), 0.5f),
-            Sphere(glm::vec3(1.0f, 0.0f, 0.0f), 0.5f),
-            Sphere(glm::vec3(-1.0f, 0.0f, 0.0f), 0.5f),
+            Sphere(glm::vec3(0.0f, 0.0f, 0.0f), 0.5f, new Lambertian(glm::vec3(1.0f, 0.75f, 0.8f))),
+            Sphere(glm::vec3(1.0f, 0.0f, 0.0f), 0.5f, new Metal(glm::vec3(0.8f, 0.6f, 0.2f), 0.3f)),
+            Sphere(glm::vec3(-1.0f, 0.0f, 0.0f), 0.5f, new Metal(glm::vec3(0.8f, 0.8f, 0.8f), 0.0f)),
         };
         // g_scene.boxes = {
         //     Box(glm::vec3(0.0f, -0.25f, 0.0f), glm::vec3(0.25f)),

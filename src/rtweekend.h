@@ -55,4 +55,9 @@ inline double clamp(double x, double min, double max)
     return x;
 }
 
+inline glm::vec3 reflect(const glm::vec3 &v, const glm::vec3 &n)
+{
+    return v - 2 * glm::dot(v, n) * n;
+}
+
 #endif RTWEEKEND_H
