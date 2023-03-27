@@ -140,6 +140,7 @@ void drawImage(Context &ctx)
     // Activate program and pass uniform for texture unit
     glUseProgram(ctx.program);
     glUniform1i(glGetUniformLocation(ctx.program, "u_texture"), 0);
+    glUniform1i(glGetUniformLocation(ctx.program, "u_gamma_correction"), ctx.rtx.gamma_correction);
 
     // Draw fullscreen quad (without any vertex buffers)
     glBindVertexArray(ctx.emptyVAO);
@@ -165,12 +166,30 @@ void showGui(Context &ctx)
     {
         rt::resetAccumulation(ctx.rtx);
     }
+
+    // Add more settings and parameters here
     if (ImGui::Checkbox("Show antialiasing", &ctx.rtx.antialiasing_jitter))
     {
         rt::resetAccumulation(ctx.rtx);
     }
-    // Add more settings and parameters here
-    // ...
+    if (ImGui::Checkbox("Gamma correction", &ctx.rtx.gamma_correction))
+    {
+        rt::resetAccumulation(ctx.rtx);
+    }
+    if (ImGui::Checkbox("Reflective material", &ctx.rtx.reflective))
+    {
+        rt::resetAccumulation(ctx.rtx);
+    }
+    if (ImGui::Checkbox("Bounding sphere", &ctx.rtx.bsphere))
+    {
+        ctx.rtx.bbox = false;
+        rt::resetAccumulation(ctx.rtx);
+    }
+    if (ImGui::Checkbox("Bounding box", &ctx.rtx.bbox))
+    {
+        ctx.rtx.bsphere = false;
+        rt::resetAccumulation(ctx.rtx);
+    }
 
     ImGui::Text("Progress");
     ImGui::ProgressBar(float(ctx.rtx.current_frame) / ctx.rtx.max_frames);

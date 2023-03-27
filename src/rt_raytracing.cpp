@@ -21,9 +21,16 @@ namespace rt
         std::vector<Box> boxes;
         std::vector<Triangle> mesh;
         Box mesh_bbox;
+        Sphere mesh_bsphere;
     } g_scene;
 
-    bool hit_world(const Ray &r, float t_min, float t_max, HitRecord &rec)
+    // struct BoundingSphere
+    // {
+    //     glm::vec3 center;
+    //     float radius;
+    // } g_bounding_sphere;
+
+    bool hit_world(RTContext &rtx, const Ray &r, float t_min, float t_max, HitRecord &rec)
     {
         HitRecord temp_rec;
         bool hit_anything = false;
@@ -53,15 +60,63 @@ namespace rt
                 rec = temp_rec;
             }
         }
-        for (int i = 0; i < g_scene.mesh.size(); ++i)
+        if (rtx.bsphere)
         {
-            if (g_scene.mesh[i].hit(r, t_min, closest_so_far, temp_rec))
+            if (g_scene.mesh_bsphere.hit(r, t_min, closest_so_far, temp_rec))
             {
-                hit_anything = true;
-                closest_so_far = temp_rec.t;
-                rec = temp_rec;
+                for (int i = 0; i < g_scene.mesh.size(); ++i)
+                {
+                    if (g_scene.mesh[i].hit(r, t_min, closest_so_far, temp_rec))
+                    {
+                        hit_anything = true;
+                        closest_so_far = temp_rec.t;
+                        rec = temp_rec;
+                    }
+                }
             }
         }
+        else if (rtx.bbox)
+        {
+            if (g_scene.mesh_bbox.hit(r, t_min, closest_so_far, temp_rec))
+            {
+                for (int i = 0; i < g_scene.mesh.size(); ++i)
+                {
+                    if (g_scene.mesh[i].hit(r, t_min, closest_so_far, temp_rec))
+                    {
+                        hit_anything = true;
+                        closest_so_far = temp_rec.t;
+                        rec = temp_rec;
+                    }
+                }
+            }
+        }
+        else
+        {
+            for (int i = 0; i < g_scene.mesh.size(); ++i)
+            {
+                if (g_scene.mesh[i].hit(r, t_min, closest_so_far, temp_rec))
+                {
+                    hit_anything = true;
+                    closest_so_far = temp_rec.t;
+                    rec = temp_rec;
+                }
+            }
+        }
+
+        // bool spehere_hit = g_scene.spheres[0].hit(r, t_min, closest_so_far, temp_rec);
+        // if (spehere_hit)
+        // {
+        //     // Check if bunny is hit
+        //     for (int i = 0; i < g_scene.mesh.size(); ++i)
+        //     {
+        //         if (g_scene.mesh[i].hit(r, t_min, closest_so_far, temp_rec))
+        //         {
+        //             hit_anything = true;
+        //             closest_so_far = temp_rec.t;
+        //             rec = temp_rec;
+        //         }
+        //     }
+        // }
         return hit_anything;
     }
 
@@ -80,7 +135,7 @@ namespace rt
             return glm::vec3(0.0f);
 
         HitRecord rec;
-        if (hit_world(r, 0.001f, infinity, rec))
+        if (hit_world(rtx, r, 0.001f, infinity, rec))
         {
             rec.normal = glm::normalize(rec.normal); // Always normalise before use!
             // rec.p = glm::normalize(rec.p);           // Always normalise before use!
@@ -108,24 +163,44 @@ namespace rt
         return (1.0f - t) * rtx.ground_color + t * rtx.sky_color;
     }
 
+    // The function average_of_vertices() is used to compute the center of a mesh
+    // (for the bounding box)
+    glm::vec3 average_of_vertices(const std::vector<glm::vec3> &vertices)
+    {
+        glm::vec3 sum(0.0f);
+        for (int i = 0; i < vertices.size(); ++i)
+            sum += vertices[i];
+        return sum / (float)vertices.size();
+    }
+
+    // The point furthers away from the center of the mesh
+    glm::vec3 furthest_point(const std::vector<glm::vec3> &vertices, const glm::vec3 &center)
+    {
+        glm::vec3 furthest = vertices[0];
+        float max_dist = glm::distance(furthest, center);
+        for (int i = 1; i < vertices.size(); ++i)
+        {
+            float dist = glm::distance(vertices[i], center);
+            if (dist > max_dist)
+            {
+                max_dist = dist;
+                furthest = vertices[i];
+            }
+        }
+        return furthest;
+    }
+
     // MODIFY THIS FUNCTION!
     void setupScene(RTContext &rtx, const char *filename)
     {
         g_scene.ground = Sphere(glm::vec3(0.0f, -1000.5f, 0.0f), 1000.0f, new Lambertian(glm::vec3(0.1f, 0.5f, 0.1f)));
-        g_scene.spheres = {
-            // Sphere(glm::vec3(0.0f, 0.0f, 0.0f), 0.5f, new Lambertian(glm::vec3(1.0f, 0.75f, 0.8f))),
-            // Sphere(glm::vec3(1.0f, 0.0f, 0.0f), 0.5f, new Metal(glm::vec3(0.8f, 0.6f, 0.2f), 0.3f)),
-            // Sphere(glm::vec3(-1.0f, 0.0f, 0.0f), 0.5f, new Metal(glm::vec3(0.8f, 0.8f, 0.8f), 0.0f)),
-            Sphere(glm::vec3(-0.3f, -0.4f, 0.9f), 0.1f, new Metal(glm::vec3(0.8f, 0.8f, 0.8f), 0.0f)),
-            Sphere(glm::vec3(-1.0f, -0.4f, 0.6f), 0.1f, new Lambertian(glm::vec3(0.8f, 0.8f, 0.8f))),
-            Sphere(glm::vec3(0.5f, -0.3f, 0.7f), 0.2f, new Metal(glm::vec3(0.8f, 0.8f, 0.8f), 0.0f)),
-        };
-        g_scene.boxes = {
-            // Box(glm::vec3(0.0f, -0.25f, 0.0f), glm::vec3(0.25f), new Metal(glm::vec3(0.8f, 0.6f, 0.2f), 0.3f)),
-            // Box(glm::vec3(1.0f, -0.25f, 0.0f), glm::vec3(0.25f), new Metal(glm::vec3(0.8f, 0.6f, 0.2f), 0.3f)),
-            Box(glm::vec3(-1.0f, -0.25f, 0.0f), glm::vec3(0.25f), new Metal(glm::vec3(0.8f, 0.8f, 0.8f), 0.3f)),
-        };
-
+        // g_scene.spheres = {
+        //     // Sphere(glm::vec3(0.0f, 0.2f, 0.0f), 1.1f, new HitBox(0.0f)),
+        //     // Sphere(glm::vec3(-0.3f, -0.4f, 0.9f), 0.1f, new Metal(glm::vec3(0.8f, 0.8f, 0.8f), 0.6f)),
+        //     Sphere(glm::vec3(0.0f, 0.0f, 0.0f), 0.5f, new Metal(glm::vec3(0.8f, 0.8f, 0.8f), 0.6f)),
+        //     // Sphere(glm::vec3(-1.0f, -0.4f, 0.6f), 0.1f, new Lambertian(glm::vec3(0.8f, 0.8f, 0.8f))),
+        //     // Sphere(glm::vec3(0.5f, -0.3f, 0.7f), 0.2f, new Metal(glm::vec3(0.8f, 0.8f, 0.8f), 0.0f)),
+        // };
         cg::OBJMesh mesh;
         cg::objMeshLoad(mesh, filename);
         g_scene.mesh.clear();
@@ -137,8 +212,17 @@ namespace rt
             glm::vec3 v0 = mesh.vertices[i0] + glm::vec3(0.0f, 0.135f, 0.0f);
             glm::vec3 v1 = mesh.vertices[i1] + glm::vec3(0.0f, 0.135f, 0.0f);
             glm::vec3 v2 = mesh.vertices[i2] + glm::vec3(0.0f, 0.135f, 0.0f);
-            g_scene.mesh.push_back(Triangle(v0, v1, v2, new Metal(glm::vec3(0.8f, 0.6f, 0.2f), 0.3f)));
+            g_scene.mesh.push_back(Triangle(v0, v1, v2, rtx.mat_ptr));
         }
+        glm::vec3 center_of_mesh = average_of_vertices(mesh.vertices);
+        glm::vec3 furthest = furthest_point(mesh.vertices, center_of_mesh);
+        float radius = glm::distance(furthest, center_of_mesh);
+
+        g_scene.mesh_bbox = Box(center_of_mesh, glm::vec3(radius), new Metal(glm::vec3(0.8f, 0.8f, 0.8f), 0.0f));
+        g_scene.mesh_bsphere = Sphere(center_of_mesh, radius, new Lambertian(glm::vec3(0.8f, 0.8f, 0.8f)));
+
+        // g_scene.boxes = {g_scene.mesh_bbox};
+        // g_scene.spheres = {g_scene.mesh_bsphere};
     }
 
     // MODIFY THIS FUNCTION!
@@ -153,8 +237,23 @@ namespace rt
         glm::vec3 origin(0.0f, 0.0f, 0.0f);
         glm::mat4 world_from_view = glm::inverse(rtx.view);
 
-// You can try parallelising this loop by uncommenting this line:
-#pragma omp parallel for schedule(dynamic)
+        if (rtx.reflective)
+        {
+            for (int i = 0; i < g_scene.mesh.size(); i += 1)
+            {
+                g_scene.mesh.at(i).change_material(new Metal(glm::vec3(0.8f, 0.8f, 0.8f), 0.0f));
+            }
+        }
+        else
+        {
+            for (int i = 0; i < g_scene.mesh.size(); i += 1)
+            {
+                g_scene.mesh.at(i).change_material(new Lambertian(glm::vec3(0.8f, 0.6f, 0.1f)));
+            }
+        }
+
+        // You can try parallelising this loop by uncommenting this line:
+        // #pragma omp parallel for schedule(dynamic)
         for (int x = 0; x < nx; ++x)
         {
             float u = 0;
@@ -197,6 +296,16 @@ namespace rt
             return;                               // Skip update
         rtx.image.resize(rtx.width * rtx.height); // Just in case...
 
+        // if (rtx.cube_reflective)
+        // {
+        //     g_scene.boxes = {
+        //         Box(glm::vec3(-1.0f, -0.25f, 0.0f), glm::vec3(0.25f), new Metal(glm::vec3(0.8f, 0.8f, 0.8f), 0.0f))};
+        // }
+        // else
+        // {
+        //     g_scene.boxes = {
+        //         Box(glm::vec3(-1.0f, -0.25f, 0.0f), glm::vec3(0.25f), new Lambertian(glm::vec3(0.8f, 0.8f, 0.8f)))};
+        // }
         updateLine(rtx, rtx.current_line % rtx.height);
 
         if (rtx.current_frame < rtx.max_frames)

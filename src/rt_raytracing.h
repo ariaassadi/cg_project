@@ -8,6 +8,7 @@
 
 namespace rt
 {
+    class material;
 
     struct RTContext
     {
@@ -18,15 +19,20 @@ namespace rt
         int current_frame = 0;
         int current_line = 0;
         int max_frames = 1000;
-        int max_bounces = 1;
+        int max_bounces = 2;
         float epsilon = 2e-4f;
         glm::mat4 view = glm::mat4(1.0f);
         glm::vec3 ground_color = glm::vec3(1.0f, 1.0f, 1.0f);
         glm::vec3 sky_color = glm::vec3(0.5f, 0.7f, 1.0f);
-        bool show_normals = true;
+        bool show_normals = false;
         // Add more settings and parameters here
         // ...
-        bool antialiasing_jitter = false;
+        bool antialiasing_jitter = true;
+        bool gamma_correction = true;
+        bool reflective = true;
+        bool bsphere = false;
+        bool bbox = false;
+        material *mat_ptr = nullptr;
     };
 
     void setupScene(RTContext &rtx, const char *mesh_filename);

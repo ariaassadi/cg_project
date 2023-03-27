@@ -11,6 +11,10 @@ namespace rt
         Triangle() {}
         Triangle(const glm::vec3 &a, const glm::vec3 &b, const glm::vec3 &c, material *m) : v0(a), v1(b), v2(c), mat_ptr(m){};
         virtual bool hit(const Ray &r, float t_min, float t_max, HitRecord &rec) const;
+        void change_material(material *m)
+        {
+            mat_ptr = m;
+        }
 
         glm::vec3 v0;
         glm::vec3 v1;
